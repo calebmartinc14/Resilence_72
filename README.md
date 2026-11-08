@@ -127,7 +127,9 @@ El kit se puede editar y filtrar por estado. El tamaño del hogar y la reserva d
 
 ## Pruebas
 
-Para comprobar los flujos del navegador, la reapertura sin red y las capas del mapa:
+La suite de Playwright abre la compilación de producción en Chromium. Usa respuestas de prueba para verificar estados concretos de AEMET e IGN. También cubre la persistencia, los cálculos, la caché y su actualización, las rutas de la API, la navegación con teclado y las reglas de accesibilidad de axe en las seis pantallas.
+
+Para ejecutarla:
 
 ```bash
 npx playwright install chromium

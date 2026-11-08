@@ -1,3 +1,4 @@
+// El contenido y sus fuentes forman parte de la aplicación y se pueden leer sin red.
 export const guides = [
   { title: 'Corte eléctrico', text: 'Mantén cerrados el frigorífico y el congelador. Usa linternas. Si utilizas un generador, mantenlo en el exterior, alejado de puertas y ventanas; nunca uses una cocina de gas para calentar la vivienda.', source: 'FEMA', url: 'https://www.ready.gov/sites/default/files/2025-02/fema_full-suite-hazard-info-sheets.pdf' },
   { title: 'Interrupción del agua', text: 'Usa agua embotellada o de una fuente segura y sigue las indicaciones de las autoridades sanitarias. Si sospechas contaminación química, hervir el agua no la hace segura.', source: 'CDC', url: 'https://www.cdc.gov/water-emergency/about/' },
@@ -8,8 +9,14 @@ export const guides = [
   { title: 'Terremoto', text: 'Si estás dentro, permanece en el interior y protégete bajo un mueble resistente, lejos de ventanas y muebles que puedan caer. Si debes evacuar, usa las escaleras, no el ascensor.', source: 'Protección Civil y Emergencias', url: 'https://www.proteccioncivil.es/documents/20121/69872/Medidas-de-autoproteccion.Ante-los-riesgos-prevencion.pdf/1d2b28f5-fd97-840d-790a-9d07f871b841' },
   { title: 'Problemas de comunicaciones', text: 'Sigue la información oficial por radio u otros medios disponibles. Evita difundir rumores y limita el uso del teléfono para no saturar las líneas de emergencia.', source: 'Protección Civil y Emergencias', url: 'https://www.proteccioncivil.es/documents/20121/92558/Recomendaciones-para-situaciones-de-emergencia-colectiva.pdf/5db920a1-63e3-44ad-6403-18d934a06795' },
 ]
+// Generamos la descarga en el navegador a partir del contenido ya disponible.
 export function downloadGuides() {
   const content = 'RESILIENCE 72 — GUÍAS DE EMERGENCIA\nAnte peligro inmediato llama al 112 cuando sea posible.\nRevisadas el 8 de noviembre de 2026.\n\n' + guides.map(g => `${g.title}\n${g.text}\nFuente: ${g.source} — ${g.url}`).join('\n\n')
   const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }))
-  const link = document.createElement('a'); link.href = url; link.download = 'resilience72-guias.txt'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'resilience72-guias.txt'
+  link.click()
+  // Damos tiempo a que empiece la descarga antes de liberar la URL temporal.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

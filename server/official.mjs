@@ -7,6 +7,7 @@ const ignFeed = 'https://www.ign.es/ign/RssTools/sismologia.xml'
 const capName = /^Z_CAP_C_LEMM_\d{14}_AFA[ZP]6118[A-Z0-9]*\.xml$/
 const maxBytes = 512 * 1024
 
+// Limitamos el tiempo, el tamaño y los redireccionamientos de la respuesta externa.
 async function readXml(url) {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(8000),
@@ -24,6 +25,7 @@ async function readXml(url) {
   return Buffer.concat(chunks)
 }
 
+// El navegador llama al mismo origen. Este servidor decide qué fuentes oficiales puede consultar.
 export async function proxyOfficial(req, res, next) {
   let url
   try {
@@ -42,6 +44,7 @@ export async function proxyOfficial(req, res, next) {
     res.writeHead(405).end()
     return
   }
+  // No aceptamos URLs de la persona usuaria: solo rutas con el formato del catálogo de Granada.
   const filename = url.pathname.slice(prefix.length + 1)
   const path = url.pathname === prefix ? feed : capName.test(filename) ? capFolder + filename : null
   if ((!isIgn && !path) || url.search) {

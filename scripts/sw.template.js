@@ -4,10 +4,11 @@ const cacheName = cachePrefix + VERSION
 const index = new URL('index.html', scope).href
 const metadata = new URL('__offline_status__', scope).href
 const precache = new Set(ASSETS.map(asset => new URL(asset, scope).href))
-// These are immutable build files. Browsers may send different Origin headers
-// for the precache request and the later module request.
+// Estos archivos son fijos por versión. El navegador puede enviar distintos encabezados Origin
+// al guardar un archivo y al pedir después ese mismo módulo.
 const matchStatic = url => caches.match(url, { cacheName, ignoreVary: true })
 
+// La copia solo se activa después de descargar todos los archivos de su versión.
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(cacheName)
@@ -16,6 +17,7 @@ self.addEventListener('install', event => {
   })())
 })
 
+// Retiramos las copias antiguas de esta aplicación después de activar la nueva.
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const names = await caches.keys()
@@ -25,6 +27,7 @@ self.addEventListener('activate', event => {
   })())
 })
 
+// Solo respondemos con la copia para la interfaz y sus archivos. Las consultas oficiales van a la red.
 self.addEventListener('fetch', event => {
   const { request } = event
   if (request.method !== 'GET') return
@@ -40,6 +43,7 @@ self.addEventListener('fetch', event => {
   })())
 })
 
+// La interfaz pregunta si la copia sigue completa antes de decir que funciona sin conexión.
 self.addEventListener('message', event => {
   if (event.data !== 'OFFLINE_STATUS' || !event.ports[0]) return
   event.waitUntil((async () => {

@@ -4,6 +4,7 @@ import type { useHousehold } from '../hooks/useHousehold'
 import type { Item } from '../storage/household'
 import { guides, downloadGuides } from './guides'
 import FamilyPlan from './FamilyPlan'
+import EnergyCalculator from './EnergyCalculator'
 
 const filters = [
   { value: 'todos', label: 'Todo' },
@@ -11,6 +12,7 @@ const filters = [
   { value: 'disponible', label: 'Disponible' },
 ] as const
 
+// Quitamos tildes y diferencias de mayúsculas para que «frio» encuentre «Ola de frío».
 function searchable(text: string) {
   return text.toLocaleLowerCase('es').normalize('NFD').replace(/\p{M}/gu, '')
 }
@@ -20,21 +22,14 @@ export default function LocalTools({ page, household }: { page: string; househol
   const [name, setName] = useState('')
   const [filter, setFilter] = useState<(typeof filters)[number]['value']>('todos')
   const [query, setQuery] = useState('')
-  const [wh, setWh] = useState(100)
-  const [capacityUnit, setCapacityUnit] = useState<'Wh' | 'mAh'>('Wh')
-  const [mah, setMah] = useState(20000)
-  const [volts, setVolts] = useState(3.7)
-  const [hours, setHours] = useState(1)
-  const [watts, setWatts] = useState(10)
-  const [count, setCount] = useState(1)
-  const [efficiency, setEfficiency] = useState(80)
-  const nominalWh = capacityUnit === 'Wh' ? wh : mah * volts / 1000
   const available = data.items.filter(item => item.status === 'disponible').length
   const visibleItems = data.items.filter(item =>
     filter === 'todos' || (filter === 'disponible' ? item.status === 'disponible' : item.status !== 'disponible')
   )
-  const visibleGuides = guides.filter(guide => searchable(guide.title).includes(searchable(query.trim())))
+  const search = searchable(query.trim())
+  const visibleGuides = guides.filter(guide => searchable(guide.title).includes(search))
 
+  // Ocultar las secciones permite conservar filtros, cálculos y borradores al navegar.
   return <>
     <section className="tool-section" hidden={page !== 'preparacion'} aria-label="Preparación del hogar">
       <p className="kit-progress"><strong>{available} de {data.items.length}</strong> elementos disponibles</p>
@@ -46,6 +41,7 @@ export default function LocalTools({ page, household }: { page: string; househol
           <p>Reserva estimada para 72 horas: <strong>{(data.people * data.litres * 3).toLocaleString('es-ES', { maximumFractionDigits: 1 })} litros</strong>.</p>
           <form onSubmit={event => {
             event.preventDefault()
+            // FormData recoge el formulario y el resto del hogar se conserva con la copia del objeto.
             const fields = new FormData(event.currentTarget)
             update({ ...data, people: Number(fields.get('people')), litres: Number(fields.get('litres')) })
           }}>
@@ -95,14 +91,7 @@ export default function LocalTools({ page, household }: { page: string; househol
         </form>
       </>}
     </section>
-    <section className="tool-section" hidden={page !== 'autonomia'} aria-label="Calculadora de energía"><p>Estima la duración de una batería con un consumo constante.</p><div className="tool-fields">
-      <label>Unidad de capacidad<select value={capacityUnit} onChange={e => setCapacityUnit(e.target.value as 'Wh' | 'mAh')}><option value="Wh">Wh</option><option value="mAh">mAh y voltaje</option></select></label>
-      {capacityUnit === 'Wh' ? <label>Capacidad nominal (Wh)<input type="number" min="0" value={wh} onChange={e => setWh(Math.max(0, Number(e.target.value)))} /></label> : <><label>Capacidad nominal (mAh)<input type="number" min="0" value={mah} onChange={e => setMah(Math.max(0, Number(e.target.value)))} /></label><label>Voltaje nominal de la batería (V)<input type="number" min="0" step="0.1" value={volts} onChange={e => setVolts(Math.max(0, Number(e.target.value)))} /></label></>}
-      <label>Consumo por dispositivo (W)<input type="number" min="0" value={watts} onChange={e => setWatts(Math.max(0, Number(e.target.value)))} /></label>
-      <label>Número de dispositivos<input type="number" min="1" max="100" value={count} onChange={e => setCount(Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))))} /></label>
-      <label>Eficiencia estimada (%)<input type="number" min="1" max="100" value={efficiency} onChange={e => setEfficiency(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} /></label>
-      <label>Tiempo de uso previsto (horas)<input type="number" min="0" step="0.5" value={hours} onChange={e => setHours(Math.max(0, Number(e.target.value)))} /></label>
-    </div><div className="result"><p>Capacidad nominal: <strong>{nominalWh.toFixed(1)} Wh</strong>. Energía aprovechable aproximada: <strong>{(nominalWh * efficiency / 100).toFixed(1)} Wh</strong>. Autonomía: <strong>{watts > 0 ? `${(nominalWh * efficiency / 100 / (watts * count)).toFixed(1)} horas` : 'introduce un consumo mayor que cero'}</strong>. Consumo previsto: <strong>{(watts * count * hours).toFixed(1)} Wh</strong>.</p></div><p>La duración real depende de la batería, temperatura, inversor y consumo variable. No uses esta cifra para equipos de soporte vital.</p></section>
+    <EnergyCalculator hidden={page !== 'autonomia'} />
 
     <section className="tool-section guide-library" hidden={page !== 'guias'} aria-label="Biblioteca de guías">
       <label>Buscar por tema<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Por ejemplo, inundaciones" /></label>

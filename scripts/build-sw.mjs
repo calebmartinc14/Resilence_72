@@ -5,11 +5,13 @@ import { fileURLToPath } from 'node:url'
 
 const output = new URL('../dist/', import.meta.url)
 const template = await readFile(new URL('./sw.template.js', import.meta.url), 'utf8')
+// Incluye los módulos que se cargan al navegar y los datos cartográficos, además de HTML y CSS.
 const assets = (await readdir(output, { recursive: true, withFileTypes: true }))
   .filter(entry => entry.isFile() && entry.name !== 'sw.js')
   .map(entry => relative(fileURLToPath(output), join(entry.parentPath, entry.name)).split(sep).join('/'))
   .sort()
 
+// El hash cambia cuando cambia cualquier archivo de producción y da un nombre nuevo a la caché.
 const hash = createHash('sha256').update(template)
 for (const asset of assets) {
   hash.update(asset)

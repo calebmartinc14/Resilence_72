@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { ArrowRight, BatteryCharging, BookOpen, CircleAlert, ClipboardCheck, House, Map, Shield, Wifi, WifiOff } from 'lucide-react'
 import LocalTools from '../features/LocalTools'
-import OfficialNotices from '../features/OfficialNotices'
 import { useHousehold } from '../hooks/useHousehold'
 import { useOffline } from '../hooks/useOffline'
 
+// Las pantallas con dependencias propias se descargan cuando se visitan. La PWA guarda sus archivos.
+const OfficialNotices = lazy(() => import('../features/OfficialNotices'))
 const GranadaMap = lazy(() => import('../features/GranadaMap'))
 
 const pages = {
@@ -18,6 +19,7 @@ const pages = {
 
 type Page = keyof typeof pages
 
+// Leemos el fragmento de la URL para permitir enlaces directos y los botones Atrás y Adelante.
 function getPage(): Page {
   const hash = window.location.hash.slice(1)
   return Object.hasOwn(pages, hash) ? hash as Page : 'inicio'
@@ -34,6 +36,7 @@ export default function App() {
   const available = household.data.items.filter(item => item.status === 'disponible').length
 
   useEffect(() => {
+    // Conectamos los eventos del navegador con el estado de React y los retiramos al desmontar.
     const updatePage = () => setPage(getPage())
     const updateNetwork = () => setOnline(navigator.onLine)
     window.addEventListener('hashchange', updatePage)
@@ -47,6 +50,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    // Al cambiar de pantalla también cambia el título y el foco pasa a su encabezado.
     document.title = page === 'inicio' ? 'Resilience 72' : pages[page].title + ' · Resilience 72'
     if (previousPage.current !== page) {
       window.scrollTo(0, 0)
@@ -123,7 +127,7 @@ export default function App() {
 
         {updateWaiting && <p className="update-notice" role="status">Hay una actualización preparada. Cierra todas las ventanas de Resilience 72 y vuelve a abrirla para aplicarla.</p>}
 
-        {page === 'alertas' && <OfficialNotices online={online} />}
+        {page === 'alertas' && <Suspense fallback={<p role="status">Abriendo los avisos…</p>}><OfficialNotices online={online} /></Suspense>}
 
         {(page === 'inicio' || page === 'guias' || page === 'alertas') && (
           <aside className="emergency" aria-label="Teléfono de emergencias">

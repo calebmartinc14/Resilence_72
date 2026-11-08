@@ -18,6 +18,7 @@ function isNotice(notice: Notice) {
       .every(field => typeof field === 'string')
 }
 
+// El almacenamiento puede faltar o contener una versión antigua; validamos antes de mostrarlo.
 function loadCopy(): StoredBulletin | null {
   try {
     const value = JSON.parse(localStorage.getItem(storageKey) ?? 'null') as StoredBulletin | null
@@ -28,10 +29,12 @@ function loadCopy(): StoredBulletin | null {
       return { ...value, history }
     }
   } catch {
+    // The page still works when storage is unavailable.
   }
   return null
 }
 
+// La consulta nueva y el historial guardado son independientes: el histórico no cuenta como aviso activo.
 function archive(result: Bulletin, previous: StoredBulletin | null): StoredBulletin {
   const history = new Map<string, HistoryEntry>()
   for (const entry of previous?.history ?? []) history.set(entry.notice.id, entry)
@@ -48,6 +51,7 @@ function DateLabel({ date }: { date: string }) {
   return <time dateTime={date}>{formatDate.format(new Date(date))}</time>
 }
 
+// Comparte la lectura y actualización del boletín entre Avisos y Mapa.
 export function useWeatherBulletin(online: boolean) {
   const [bulletin, setBulletin] = useState(loadCopy)
   const latest = useRef(bulletin)
@@ -84,6 +88,7 @@ export function useWeatherBulletin(online: boolean) {
     return () => window.clearInterval(timer)
   }, [online])
 
+  // Una copia antigua o una consulta fallida no permite afirmar que el estado siga vigente.
   const stale = !online || status !== 'ready' || !bulletin ||
     now - Date.parse(bulletin.consulted) > 15 * minute || now - Date.parse(bulletin.published) > 72 * 60 * minute
   return { bulletin, status, now, stale, refresh: () => setAttempt(value => value + 1) }

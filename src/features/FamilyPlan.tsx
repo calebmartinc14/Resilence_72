@@ -1,10 +1,15 @@
 import type { FormEvent } from 'react'
 import type { Household } from '../storage/household'
 
+// Se permiten separadores habituales y un solo prefijo internacional al principio.
+const phonePattern = String.raw`\+?[0-9 .\(\)\-]*[0-9][0-9 .\(\)\-]*`
+const validPhone = new RegExp('^' + phonePattern + '$')
+
 export default function FamilyPlan({ data, update }: { data: Household; update: (next: Household) => void }) {
   const contacts = data.contacts ?? []
 
   function savePlan(event: FormEvent<HTMLFormElement>) {
+    // Cancelamos el envío HTML: el formulario escribe en IndexedDB, nunca en un servidor.
     event.preventDefault()
     const fields = new FormData(event.currentTarget)
     update({ ...data, plan: String(fields.get('plan')).trim() })
@@ -16,7 +21,7 @@ export default function FamilyPlan({ data, update }: { data: Household; update: 
     const fields = new FormData(form)
     const name = String(fields.get('name')).trim()
     const phone = String(fields.get('phone')).trim()
-    if (!name || !/\d/.test(phone)) return
+    if (!name || !validPhone.test(phone)) return
     update({ ...data, contacts: [...contacts, { id: crypto.randomUUID(), name, phone }] })
     form.reset()
   }
@@ -43,7 +48,7 @@ export default function FamilyPlan({ data, update }: { data: Household; update: 
     <form onSubmit={addContact}>
       <div className="tool-fields">
         <label>Nombre del contacto<input name="name" required maxLength={70} /></label>
-        <label>Teléfono<input name="phone" type="tel" required maxLength={25} pattern="[+0-9 ().\-]*[0-9][+0-9 ().\-]*" /></label>
+        <label>Teléfono<input name="phone" type="tel" required maxLength={25} pattern={phonePattern} /></label>
       </div>
       <button type="submit">Añadir contacto</button>
     </form>

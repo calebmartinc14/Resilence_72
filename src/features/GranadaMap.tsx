@@ -16,6 +16,7 @@ const source = 'https://api-features.ign.es/collections/administrativeunit?f=htm
 const timeFormat = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Madrid' })
 const colors = new Map([['amarillo', '#fae087'], ['naranja', '#ffae78'], ['rojo', '#ff817d']])
 
+// Volvemos a comprobar las coordenadas porque también pueden venir de una copia guardada.
 function validRing(ring: Coordinate[]) {
   return Array.isArray(ring) && ring.length >= 4 && ring.every(point =>
     Array.isArray(point) && point.length === 2 && point.every(Number.isFinite) &&
@@ -47,7 +48,12 @@ export default function GranadaMap({ online }: { online: boolean }) {
   const seismic = useSeismicReports(true, online)
   const notices = (weather.bulletin?.notices ?? []).filter(notice => Date.parse(notice.ends) > weather.now)
   const seismicCopy = !online || seismic.status !== 'ready'
-  const regionalBounds = useMemo(() => base ? L.geoJSON(base).getBounds().pad(.35) : null, [base])
+  // GeoJSON guarda longitud primero. Leaflet espera latitud primero.
+  const regionalBounds = useMemo(() => {
+    if (!base) return null
+    const [west, south, east, north] = base.bbox
+    return L.latLngBounds([south, west], [north, east]).pad(.35)
+  }, [base])
   const events = useMemo(() => (seismic.report?.events ?? []).filter(event =>
     event.position && regionalBounds?.contains(event.position)).slice(0, 12), [seismic.report, regionalBounds])
 
@@ -69,6 +75,7 @@ export default function GranadaMap({ online }: { online: boolean }) {
 
   useEffect(() => {
     if (!base || !element.current) return
+    // Leaflet crea la vista sobre un div de React. Al salir se eliminan el mapa y sus escuchas.
     const map = L.map(element.current, {
       minZoom: 7, maxZoom: 13, scrollWheelZoom: false, attributionControl: false, zoomControl: false,
     })
@@ -109,6 +116,7 @@ export default function GranadaMap({ online }: { online: boolean }) {
   useEffect(() => {
     const current = view.current
     if (!current) return
+    // Las capas dinámicas se actualizan por separado para conservar el encuadre elegido.
     current.alerts.clearLayers()
     for (const notice of weather.bulletin?.notices ?? []) {
       if (Date.parse(notice.ends) <= weather.now || !Array.isArray(notice.polygons)) continue
@@ -154,6 +162,7 @@ export default function GranadaMap({ online }: { online: boolean }) {
     if (current) current.map.fitBounds(current.bounds, { padding: [12, 12] })
   }
 
+  // Solicitamos la posición solo al pulsar el botón y la conservamos únicamente en memoria.
   function locate() {
     if (!navigator.geolocation) {
       setLocationMessage('El navegador no ofrece acceso a la ubicación.')

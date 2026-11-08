@@ -25,6 +25,7 @@ export type Bulletin = {
   notices: Notice[]
 }
 
+// Buscamos solo hijos del espacio XML esperado para no mezclar datos de secciones distintas.
 function children(parent: Element, name: string) {
   return Array.from(parent.children).filter(element => element.localName === name && element.namespaceURI === parent.namespaceURI)
 }
@@ -33,6 +34,7 @@ function value(parent: Element, name: string) {
   return children(parent, name)[0]?.textContent?.trim() ?? ''
 }
 
+// Convertimos fechas con zona horaria a UTC para compararlas correctamente.
 function date(raw: string) {
   if (!/^\d{4}-\d{2}-\d{2}T/.test(raw) || !/(?:Z|[+-]\d{2}:\d{2})$/.test(raw)) throw new Error('Fecha de aviso incompleta')
   return new Date(raw).toISOString()
@@ -54,6 +56,7 @@ function getCapFile(url: URL) {
   return capPath.exec(url.pathname)?.[1]
 }
 
+// El CAP da pares latitud,longitud. Una geometría inválida se omite y el aviso sigue en la lista.
 function parsePolygon(text: string): Coordinate[] {
   const ring = text.trim().split(/\s+/).map(pair => pair.split(',').map(part => part.trim()))
   if (ring.length < 4 || ring.some(parts => parts.length !== 2 || parts.some(part => part === ''))) return []
@@ -65,6 +68,7 @@ function parsePolygon(text: string): Coordinate[] {
   return coords
 }
 
+// Leemos el mensaje CAP oficial y conservamos únicamente los avisos públicos reales.
 async function fetchNotice(url: URL, signal: AbortSignal) {
   const alert = await fetchXml(api + '/' + getCapFile(url), cap, 'alert', signal)
   const status = value(alert, 'status')
@@ -100,6 +104,7 @@ async function fetchNotice(url: URL, signal: AbortSignal) {
   return { replaces, notice }
 }
 
+// El canal Atom indica qué documentos CAP componen la consulta provincial.
 export async function fetchBulletin(signal: AbortSignal): Promise<Bulletin> {
   const feed = await fetchXml(api, atom, 'feed', signal)
   if (!value(feed, 'title').endsWith(' - Granada')) throw new Error('Canal de otra provincia')
@@ -121,6 +126,7 @@ export async function fetchBulletin(signal: AbortSignal): Promise<Bulletin> {
   }
   if ((!files.size && !explicitlyEmpty) || files.size > 80) throw new Error('Canal de avisos incompleto')
 
+  // Limitamos las descargas simultáneas y retiramos los mensajes sustituidos o cancelados.
   const entries = [...files.values()]
   const notices = new Map<string, Notice>()
   const replaced = new Set<string>()

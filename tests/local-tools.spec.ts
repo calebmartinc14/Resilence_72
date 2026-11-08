@@ -1,0 +1,53 @@
+import { expect, test } from '@playwright/test'
+
+test('la calculadora distingue decimales, cero y entradas inválidas', async ({ page }) => {
+  await page.goto('/#autonomia')
+  const power = page.getByLabel('Consumo por dispositivo (W)')
+  const count = page.getByLabel('Número de dispositivos')
+  await page.getByLabel('Capacidad nominal (Wh)').fill('120')
+  await power.fill('7.5')
+  await count.fill('2')
+  await page.getByLabel('Eficiencia estimada (%)').fill('75')
+  await page.getByLabel('Tiempo de uso previsto (horas)').fill('3.5')
+  await expect(page.getByText('90.0 Wh', { exact: true })).toBeVisible()
+  await expect(page.getByText('6.0 horas', { exact: true })).toBeVisible()
+  await expect(page.getByText('52.5 Wh', { exact: true })).toBeVisible()
+
+  await power.fill('0')
+  await expect(page.getByText('introduce un consumo mayor que cero')).toBeVisible()
+  await power.fill('')
+  await expect(page.getByText('Completa los campos con valores válidos')).toBeVisible()
+  await power.fill('7.5')
+  await count.fill('1.5')
+  await expect(page.getByText('Completa los campos con valores válidos')).toBeVisible()
+  await count.fill('2')
+
+  await page.getByLabel('Unidad de capacidad').selectOption('mAh')
+  await page.getByLabel('Voltaje nominal de la batería (V)').fill('0')
+  await expect(page.getByText('Completa los campos con valores válidos')).toBeVisible()
+  await page.getByLabel('Voltaje nominal de la batería (V)').fill('3.7')
+  await expect(page.getByText('74.0 Wh', { exact: true })).toBeVisible()
+})
+
+test('valida el teléfono y conserva el borrado de un elemento y de un contacto', async ({ page }) => {
+  await page.goto('/#preparacion')
+  await page.getByText('Plan familiar y contactos', { exact: true }).click()
+  const phone = page.getByLabel('Teléfono', { exact: true })
+  await page.getByLabel('Nombre del contacto').fill('Contacto de prueba')
+  await phone.fill('600++000')
+  await page.getByRole('button', { name: 'Añadir contacto' }).click()
+  await expect(page.getByText('Aún no hay contactos guardados.')).toBeVisible()
+  expect(await phone.evaluate((input: HTMLInputElement) => input.validity.patternMismatch)).toBe(true)
+
+  await phone.fill('+34 (600) 000-000')
+  await page.getByRole('button', { name: 'Añadir contacto' }).click()
+  await expect(page.getByRole('link', { name: '+34 (600) 000-000' })).toHaveAttribute('href', 'tel:+34600000000')
+  await page.getByRole('button', { name: 'Quitar contacto Contacto de prueba' }).click()
+  await page.getByRole('button', { name: 'Eliminar Agua potable' }).click()
+  await expect(page.getByText('Datos guardados en este dispositivo', { exact: true })).toBeVisible()
+
+  await page.reload()
+  await page.getByText('Plan familiar y contactos', { exact: true }).click()
+  await expect(page.getByText('Aún no hay contactos guardados.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Eliminar Agua potable' })).toHaveCount(0)
+})

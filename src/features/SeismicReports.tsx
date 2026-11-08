@@ -6,6 +6,7 @@ const dateFormat = new Intl.DateTimeFormat('es-ES', {
   dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Madrid',
 })
 
+// La copia local usa el mismo lector que los datos en línea para evitar dos formatos distintos.
 function savedFeed() {
   try {
     const saved = JSON.parse(localStorage.getItem(key) ?? 'null')
@@ -16,6 +17,7 @@ function savedFeed() {
   return null
 }
 
+// Consulta el IGN solo cuando se necesita y cancela la petición al cerrar la pantalla.
 export function useSeismicReports(open: boolean, online: boolean) {
   const [report, setReport] = useState(savedFeed)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')

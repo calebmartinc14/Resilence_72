@@ -20,6 +20,7 @@ export function useOffline() {
       const controller = workers.controller
       if (!active || !controller) return
 
+      // El Service Worker comprueba todos los archivos y responde por un canal temporal.
       const channel = new MessageChannel()
       const timer = window.setTimeout(() => {
         cancelCheck()
@@ -53,24 +54,37 @@ export function useOffline() {
       checkInstallState()
     }
 
+    function register() {
+      void workers.register(import.meta.env.BASE_URL + 'sw.js', { updateViaCache: 'none' }).then(result => {
+        if (!active) return
+        registration?.removeEventListener('updatefound', watchInstall)
+        registration = result
+        result.addEventListener('updatefound', watchInstall)
+        watchInstall()
+        checkCache()
+        if (!workers.controller && !result.installing && !result.active && !result.waiting) {
+          setStatus({ state: 'unavailable' })
+        }
+      }).catch(() => {
+        if (active && !workers.controller) setStatus({ state: 'unavailable' })
+      })
+    }
+
     function reconnect() {
       checkCache()
-      void registration?.update().catch(() => {})
+      // Una primera instalación interrumpida puede quedarse sin registro activo.
+      if (registration?.active || registration?.installing) void registration.update().catch(() => {})
+      else {
+        setStatus({ state: 'preparing' })
+        register()
+      }
     }
 
     workers.addEventListener('controllerchange', checkCache)
     window.addEventListener('online', reconnect)
     window.addEventListener('offline', checkCache)
     checkCache()
-    void workers.register(import.meta.env.BASE_URL + 'sw.js', { updateViaCache: 'none' }).then(result => {
-      if (!active) return
-      registration = result
-      result.addEventListener('updatefound', watchInstall)
-      watchInstall()
-      checkCache()
-    }).catch(() => {
-      if (active && !workers.controller) setStatus({ state: 'unavailable' })
-    })
+    register()
 
     return () => {
       active = false

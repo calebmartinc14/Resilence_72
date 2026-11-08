@@ -11,6 +11,7 @@ function field(element: Element, tag: string) {
   return children(element, tag)[0]?.textContent?.trim() ?? ''
 }
 
+// Extrae texto y coordenadas del RSS. Solo genera enlaces a fichas verificables del IGN.
 export function parseSeismicFeed(xml: string) {
   const document = new DOMParser().parseFromString(xml, 'application/xml')
   const rss = document.documentElement
