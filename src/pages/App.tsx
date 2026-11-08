@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, BatteryCharging, BookOpen, CircleAlert, ClipboardCheck, House, Shield, Wifi, WifiOff } from 'lucide-react'
 import LocalTools from '../features/LocalTools'
 import { useHousehold } from '../hooks/useHousehold'
+import { useOffline } from '../hooks/useOffline'
 
 const pages = {
   inicio: { label: 'Inicio', title: 'Prepárate a tu ritmo', icon: House },
@@ -22,6 +23,7 @@ export default function App() {
   const [page, setPage] = useState(getPage)
   const [online, setOnline] = useState(navigator.onLine)
   const household = useHousehold()
+  const { status: offline, updateWaiting } = useOffline()
   const title = useRef<HTMLHeadingElement>(null)
   const previousPage = useRef(page)
   const total = household.data.items.length
@@ -89,6 +91,18 @@ export default function App() {
             <a className="button button-primary" href="#preparacion">{available > 0 ? 'Continuar mi lista' : 'Abrir mi lista'} <ArrowRight size={18} aria-hidden="true" /></a>
           </section>
 
+          <details className="offline-card tool-section">
+            <summary>
+              {offline.state === 'ready' ? 'Lista para usar sin conexión'
+                : offline.state === 'preparing' ? 'Preparando el acceso sin conexión…'
+                : 'Acceso sin conexión no preparado'}
+            </summary>
+            {offline.state === 'ready'
+              ? <p>Kit, plan familiar, contactos, guías y calculadoras disponibles. Copia de la aplicación guardada el <time dateTime={offline.since}>{new Date(offline.since).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</time>.</p>
+              : <p>Abre la versión publicada con Internet y espera a que aparezca el mensaje de que está lista.</p>}
+            <p>Para instalarla, busca «Instalar» en el menú del navegador. En Safari para iPhone, usa Compartir → Añadir a pantalla de inicio.</p>
+          </details>
+
           <section className="quick-tools" aria-labelledby="tools-title">
             <h2 id="tools-title">Accesos rápidos</h2>
             <div className="quick-grid">
@@ -101,6 +115,7 @@ export default function App() {
 
         <LocalTools page={page} household={household} />
 
+        {updateWaiting && <p className="update-notice" role="status">Hay una actualización preparada. Cierra todas las ventanas de Resilience 72 y vuelve a abrirla para aplicarla.</p>}
 
         {page === 'alertas' && <section className="tool-section">
           <h2>Sin datos de alertas</h2>

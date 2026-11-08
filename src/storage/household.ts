@@ -1,5 +1,6 @@
 export type Item = { id: string; name: string; status: 'necesario' | 'pendiente' | 'disponible' }
-export type Household = { people: number; litres: number; items: Item[] }
+export type Contact = { id: string; name: string; phone: string }
+export type Household = { people: number; litres: number; items: Item[]; plan?: string; contacts?: Contact[] }
 const initialNames = ['Agua potable', 'Alimentos no perecederos', 'Medicamentos y botiquín', 'Artículos de higiene', 'Linterna y pilas', 'Radio', 'Batería externa', 'Documentación esencial']
 export const initialData: Household = { people: 1, litres: 2, items: initialNames.map((name, i) => ({ id: String(i), name, status: 'necesario' })) }
 const open = () => new Promise<IDBDatabase>((resolve, reject) => {

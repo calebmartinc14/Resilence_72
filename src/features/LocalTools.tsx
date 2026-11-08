@@ -3,6 +3,7 @@ import { Download, Plus, Trash2 } from 'lucide-react'
 import type { useHousehold } from '../hooks/useHousehold'
 import type { Item } from '../storage/household'
 import { guides, downloadGuides } from './guides'
+import FamilyPlan from './FamilyPlan'
 
 const filters = [
   { value: 'todos', label: 'Todo' },
@@ -57,6 +58,7 @@ export default function LocalTools({ page, household }: { page: string; househol
           </form>
         </details>
 
+        <FamilyPlan data={data} update={update} />
 
         <div className="filters" role="group" aria-label="Filtrar lista">
           {filters.map(option => <button key={option.value} type="button" aria-pressed={filter === option.value}
