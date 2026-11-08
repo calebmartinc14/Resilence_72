@@ -1,0 +1,14 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color-scheme: dark;
+  color: #edf3ee;
+  background: #111a18;
+}
+body { margin: 0; }
+.dashboard { max-width: 60rem; margin: auto; padding: clamp(1rem, 6vw, 3rem); }
+.brand { display: flex; align-items: center; gap: .65rem; color: #c9efa4; font-weight: 700; }
+h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+section { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; margin-top: 2rem; }
+article { padding: 1rem; border: 1px solid #43564d; border-radius: .8rem; background: #192622; }
+h2 { font-size: 1.25rem; }
+p { line-height: 1.5; color: #b3c2b9; }
