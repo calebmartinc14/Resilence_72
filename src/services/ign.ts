@@ -1,4 +1,5 @@
 const ignOrigin = 'https://www.ign.es'
+const geo = 'http://www.w3.org/2003/01/geo/wgs84_pos#'
 const eventPath = '/web/ign/portal/sis-catalogo-terremotos/-/catalogo-terremotos/detailTerremoto'
 export const ignCatalog = ignOrigin + '/web/ign/portal/ultimos-terremotos/-/ultimos-terremotos/index.htm'
 
@@ -25,6 +26,10 @@ export function parseSeismicFeed(xml: string) {
       source.pathname !== eventPath || !id || !/^es\d{4}[a-z0-9]+$/i.test(id) || !description) {
       throw new Error('Registro sísmico incompleto')
     }
-    return { id, description, url: ignOrigin + eventPath + '?evid=' + encodeURIComponent(id) }
+    const lat = Number(item.getElementsByTagNameNS(geo, 'lat')[0]?.textContent?.trim() || NaN)
+    const lng = Number(item.getElementsByTagNameNS(geo, 'long')[0]?.textContent?.trim() || NaN)
+    const position: [number, number] | null = Number.isFinite(lat) && Number.isFinite(lng) &&
+      Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lat, lng] : null
+    return { id, description, position, url: ignOrigin + eventPath + '?evid=' + encodeURIComponent(id) }
   })
 }

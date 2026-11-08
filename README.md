@@ -6,7 +6,7 @@ Resilience 72 es una aplicación web de preparación ciudadana para ayudar a par
 
 ## Estado
 
-Fase 4 — avisos de AEMET para Granada, historial local y sismos recientes del IGN. La aplicación es instalable y prepara una copia local de la interfaz. El kit, el plan, los contactos, las guías y las calculadoras están disponibles después de preparar la copia con Internet. La pantalla de Avisos consulta AEMET y ofrece acceso a los registros del IGN y a otras fuentes públicas.
+Fase 5 — mapa municipal de Granada disponible sin conexión, con capas de AEMET e IGN. La aplicación es instalable y prepara una copia local de la interfaz. El kit, el plan, los contactos, las guías y las calculadoras están disponibles después de preparar la copia con Internet. La pantalla de Avisos consulta AEMET y ofrece acceso a los registros del IGN y a otras fuentes públicas.
 
 ## Arquitectura
 
@@ -15,6 +15,7 @@ Fase 4 — avisos de AEMET para Granada, historial local y sismos recientes del 
 - **Persistencia local:** IndexedDB para el checklist, el plan familiar y los contactos. Evitar guardar información personal que no sea necesaria.
 - **Offline:** Service Worker y Cache API para la interfaz y las guías incluidas en la compilación. IndexedDB conserva los datos del hogar. Las consultas a la API de avisos quedan fuera de la caché del Service Worker. La última consulta válida se conserva por separado en el navegador.
 - **Servicios oficiales:** adaptadores por fuente en `src/services/`. AEMET y otras fuentes se integrarán solo después de verificar su documentación y condiciones. Si una credencial debe mantenerse secreta, se añadirá un backend Node/Express como proxy; ninguna clave privada irá en el cliente.
+- **Mapas:** Leaflet con límites municipales locales del IGN. Las capas de avisos y sismos usan la geometría publicada por sus respectivas fuentes.
 - **Pruebas:** Vitest para lógica y componentes; Playwright para recorridos y navegador sin conexión, incorporados en las fases donde existan funcionalidades que probar.
 
 El intermediario de fuentes oficiales usa las APIs de Node. Los canales públicos integrados no necesitan credenciales.
@@ -82,7 +83,7 @@ En el servidor de avisos, `PORT` es opcional y vale `8787` por defecto. Si se a�
 
 1. Sirve el contenido de `dist/` por HTTPS o usa `npm run preview` en localhost. El servidor de desarrollo no registra el Service Worker.
 2. Abre la portada con Internet y espera a que diga «Lista para usar sin conexión». El panel muestra cuándo se guardó la copia.
-3. Usa la opción de instalación del navegador si está disponible. Corta la red y vuelve a abrir la aplicación o recarga la página. Comprueba el kit, el plan familiar, los contactos, las guías y las calculadoras.
+3. Usa la opción de instalación del navegador si está disponible. Corta la red y vuelve a abrir la aplicación o recarga la página. Comprueba el kit, el plan familiar, los contactos, las guías, las calculadoras y el mapa municipal.
 4. Al reconectar, se comprueba si existe una versión nueva. Cuando esté preparada, cierra todas las ventanas de la aplicación y ábrela otra vez para activarla. El kit y el plan permanecen en IndexedDB.
 
 El despliegue publica todos los archivos de `dist/` juntos. Sirve `sw.js` con `Cache-Control: no-cache` y conserva la caché de larga duración para los archivos con hash de `assets/`. Cada versión conserva su propia copia de la interfaz hasta que se activa la nueva. La primera visita necesita Internet y borrar los datos del sitio elimina la copia local y el plan. La fecha de la copia se refiere a la aplicación y sus guías.
@@ -101,6 +102,19 @@ El apartado de sismos muestra hasta cinco registros del [canal RSS del IGN](http
 
 La pantalla también enlaza al [mapa público de la RAN](https://ran-vmap.proteccioncivil.es/) y al [conjunto de incidencias de la DGT](https://nap.dgt.es/es/dataset/incidencias-de-trafico-srti-en-formato-lod-datex-ii). Estos accesos abren los servicios oficiales. La aplicación no consulta sus datos ni emite avisos de ES-Alert.
 
+## Mapa de Granada
+
+La cartografía base contiene los 174 municipios de la provincia. Está simplificada para orientación y ocupa aproximadamente 440 kB. El Service Worker guarda `public/granada.geojson` y el módulo de Leaflet junto a la aplicación. La portada indica cuándo está lista la copia. La pantalla del mapa indica la fecha de la cartografía y de las consultas dinámicas por separado.
+
+- **Base municipal:** obra derivada de BDLJE Continua CC BY 4.0 ign.es, según el [reconocimiento oficial](https://www.scne.es/tablaProductos.php) y la [licencia del IGN](https://www.ign.es/resources/licencia/Condiciones_licenciaUso_IGN.pdf). Se simplifican los límites y se conserva el nombre de cada municipio.
+- **AEMET:** se representan los polígonos de los mensajes [CAP oficiales](https://www.aemet.es/documentos/es/eltiempo/prediccion/avisos/plan_meteoalerta/METEOALERTA_ANX3_CAP.pdf). Los avisos sin geometría se leen en la lista. Cuando una consulta no es reciente o falla, los polígonos guardados se muestran con trazo discontinuo.
+- **IGN:** se representan las coordenadas GeoRSS de los registros que caen dentro del encuadre regional. Los puntos son observaciones sísmicas. Cada uno enlaza a su ficha.
+- **Ubicación:** «Mi ubicación» pide permiso al navegador y muestra el punto en memoria durante la sesión del mapa.
+
+El alcance cartográfico es municipal. La versión sin red incluye los límites y las últimas capas dinámicas que se hayan consultado con éxito.
+
+Para regenerar los límites, descarga el [GeoJSON de la consulta oficial para Granada](https://api-features.ign.es/collections/administrativeunit/items?f=json&codnut3=ES614&nationallevelname=Municipio&limit=250) y ejecuta `python scripts/prepare-granada.py ruta-al-geojson` en un entorno con Shapely. El script valida el ámbito y la completitud, simplifica las geometrías y conserva la fecha de la respuesta. Shapely solo se usa para preparar el archivo.
+
 ## Seguridad y contenido
 
 Los contactos y el plan familiar permanecerán en el dispositivo salvo consentimiento explícito para cualquier transmisión futura. Los datos oficiales mostrarán fuente, hora de publicación/consulta y antigüedad. La aplicación no inventará avisos, refugios, rutas, niveles de riesgo ni recomendaciones. Ante peligro inmediato, se debe contactar con el 112 cuando sea posible.
@@ -113,7 +127,7 @@ El kit se puede editar y filtrar por estado. El tamaño del hogar y la reserva d
 
 ## Pruebas
 
-Para comprobar los flujos del navegador, la reapertura sin red y los estados de avisos:
+Para comprobar los flujos del navegador, la reapertura sin red y las capas del mapa:
 
 ```bash
 npx playwright install chromium

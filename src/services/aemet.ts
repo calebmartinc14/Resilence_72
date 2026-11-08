@@ -3,6 +3,7 @@ const cap = 'urn:oasis:names:tc:emergency:cap:1.2'
 const api = '/api/avisos/granada'
 const capPath = /^\/documentos_d\/eltiempo\/prediccion\/avisos\/cap\/(Z_CAP_C_LEMM_\d{14}_AFA[ZP]6118[A-Z0-9]*\.xml)$/
 export const officialPage = 'https://www.aemet.es/es/eltiempo/prediccion/avisos?p=6118'
+export type Coordinate = [lat: number, lng: number]
 
 export type Notice = {
   id: string
@@ -15,6 +16,7 @@ export type Notice = {
   starts: string
   ends: string
   url: string
+  polygons?: Coordinate[][]
 }
 
 export type Bulletin = {
@@ -52,6 +54,17 @@ function getCapFile(url: URL) {
   return capPath.exec(url.pathname)?.[1]
 }
 
+function parsePolygon(text: string): Coordinate[] {
+  const ring = text.trim().split(/\s+/).map(pair => pair.split(',').map(part => part.trim()))
+  if (ring.length < 4 || ring.some(parts => parts.length !== 2 || parts.some(part => part === ''))) return []
+  const coords = ring.map(([lat, lng]): Coordinate => [Number(lat), Number(lng)])
+  const first = coords[0]
+  const last = coords[coords.length - 1]
+  if (first[0] !== last[0] || first[1] !== last[1] || coords.some(([lat, lng]) =>
+    !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) return []
+  return coords
+}
+
 async function fetchNotice(url: URL, signal: AbortSignal) {
   const alert = await fetchXml(api + '/' + getCapFile(url), cap, 'alert', signal)
   const status = value(alert, 'status')
@@ -80,6 +93,8 @@ async function fetchNotice(url: URL, signal: AbortSignal) {
     starts: date(value(info, 'onset') || value(info, 'effective')),
     ends: date(value(info, 'expires')),
     url: url.href,
+    polygons: children(info, 'area').flatMap(area => children(area, 'polygon'))
+      .map(polygon => parsePolygon(polygon.textContent ?? '')).filter(ring => ring.length > 0),
   }
   if (!notice.id || !notice.title || !notice.area || notice.ends <= notice.starts) throw new Error('Aviso incompleto')
   return { replaces, notice }

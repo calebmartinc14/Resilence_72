@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, BatteryCharging, BookOpen, CircleAlert, ClipboardCheck, House, Shield, Wifi, WifiOff } from 'lucide-react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { ArrowRight, BatteryCharging, BookOpen, CircleAlert, ClipboardCheck, House, Map, Shield, Wifi, WifiOff } from 'lucide-react'
 import LocalTools from '../features/LocalTools'
 import OfficialNotices from '../features/OfficialNotices'
 import { useHousehold } from '../hooks/useHousehold'
 import { useOffline } from '../hooks/useOffline'
 
+const GranadaMap = lazy(() => import('../features/GranadaMap'))
 
 const pages = {
   inicio: { label: 'Inicio', title: 'Prepárate a tu ritmo', icon: House },
@@ -12,6 +13,7 @@ const pages = {
   guias: { label: 'Guías', title: 'Guías de emergencia', icon: BookOpen },
   autonomia: { label: 'Energía', title: 'Autonomía energética', icon: BatteryCharging },
   alertas: { label: 'Avisos', title: 'Avisos oficiales', icon: CircleAlert },
+  mapa: { label: 'Mapa', title: 'Mapa de Granada', icon: Map },
 }
 
 type Page = keyof typeof pages
@@ -100,7 +102,7 @@ export default function App() {
                 : 'Acceso sin conexión no preparado'}
             </summary>
             {offline.state === 'ready'
-              ? <p>Kit, plan familiar, contactos, guías, calculadoras disponibles. Copia de la aplicación guardada el <time dateTime={offline.since}>{new Date(offline.since).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</time>.</p>
+              ? <p>Kit, plan familiar, contactos, guías, calculadoras y mapa municipal disponibles. Copia de la aplicación guardada el <time dateTime={offline.since}>{new Date(offline.since).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</time>.</p>
               : <p>Abre la versión publicada con Internet y espera a que aparezca el mensaje de que está lista.</p>}
             <p>Para instalarla, busca «Instalar» en el menú del navegador. En Safari para iPhone, usa Compartir → Añadir a pantalla de inicio.</p>
           </details>
@@ -111,11 +113,13 @@ export default function App() {
               <a className="quick-link" href="#guias"><BookOpen aria-hidden="true" /><span><strong>Guías de emergencia</strong><small>Consulta qué hacer</small></span><ArrowRight size={18} aria-hidden="true" /></a>
               <a className="quick-link" href="#autonomia"><BatteryCharging aria-hidden="true" /><span><strong>Calculadora de energía</strong><small>Estima cuánto dura tu batería</small></span><ArrowRight size={18} aria-hidden="true" /></a>
               <a className="quick-link" href="#alertas"><CircleAlert aria-hidden="true" /><span><strong>Avisos oficiales</strong><small>AEMET · Provincia de Granada</small></span><ArrowRight size={18} aria-hidden="true" /></a>
+              <a className="quick-link" href="#mapa"><Map aria-hidden="true" /><span><strong>Mapa de Granada</strong><small>Municipios, zonas de aviso y sismos</small></span><ArrowRight size={18} aria-hidden="true" /></a>
             </div>
           </section>
         </>}
 
         <LocalTools page={page} household={household} />
+        {page === 'mapa' && <Suspense fallback={<p role="status">Abriendo el mapa…</p>}><GranadaMap online={online} /></Suspense>}
 
         {updateWaiting && <p className="update-notice" role="status">Hay una actualización preparada. Cierra todas las ventanas de Resilience 72 y vuelve a abrirla para aplicarla.</p>}
 
