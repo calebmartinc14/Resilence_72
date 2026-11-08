@@ -6,19 +6,18 @@ Resilience 72 es una aplicación web de preparación ciudadana para ayudar a par
 
 ## Estado
 
-Fase 3 — aplicación instalable y copia local de la interfaz. El kit, el plan, los contactos, las guías y las calculadoras están disponibles después de preparar la copia con Internet. Los avisos oficiales quedan para la Fase 4.
+Fase 4 — avisos de AEMET para Granada, historial local y sismos recientes del IGN. La aplicación es instalable y prepara una copia local de la interfaz. El kit, el plan, los contactos, las guías y las calculadoras están disponibles después de preparar la copia con Internet. La pantalla de Avisos consulta AEMET y ofrece acceso a los registros del IGN y a otras fuentes públicas.
 
 ## Arquitectura
 
 - **Cliente:** React y TypeScript, empaquetados con Vite. La interfaz y las herramientas locales no dependen de un servidor para sus cálculos.
 - **Estilos:** CSS organizado por capas/archivos; `src/styles/global.css` contiene los tokens visuales y el diseño inicial. Los módulos se separarán a medida que crezca cada funcionalidad.
 - **Persistencia local:** IndexedDB para el checklist, el plan familiar y los contactos. Evitar guardar información personal que no sea necesaria.
-- **Offline:** Service Worker y Cache API para la interfaz y las guías incluidas en la compilación. IndexedDB conserva los datos del hogar. Las respuestas de futuras APIs quedan fuera de la caché de la aplicación.
+- **Offline:** Service Worker y Cache API para la interfaz y las guías incluidas en la compilación. IndexedDB conserva los datos del hogar. Las consultas a la API de avisos quedan fuera de la caché del Service Worker. La última consulta válida se conserva por separado en el navegador.
 - **Servicios oficiales:** adaptadores por fuente en `src/services/`. AEMET y otras fuentes se integrarán solo después de verificar su documentación y condiciones. Si una credencial debe mantenerse secreta, se añadirá un backend Node/Express como proxy; ninguna clave privada irá en el cliente.
-- **Mapas:** Leaflet solo cuando haya una fuente geográfica útil y licencias compatibles. La cartografía offline requiere evaluar proveedor, atribución, tamaño de descarga y condiciones de uso antes de implementarla.
 - **Pruebas:** Vitest para lógica y componentes; Playwright para recorridos y navegador sin conexión, incorporados en las fases donde existan funcionalidades que probar.
 
-No se añade backend, sistema de mapas, biblioteca de estado ni framework de componentes en esta fase: aún no resuelven una necesidad implementada.
+El intermediario de fuentes oficiales usa las APIs de Node. Los canales públicos integrados no necesitan credenciales.
 
 ## Estructura prevista
 
@@ -61,7 +60,7 @@ npm run build
 npm run preview
 ```
 
-No hay variables de entorno en Fase 1. Si se añaden integraciones que requieran secretos, se documentarán en `.env.example` y se mantendrán exclusivamente en el backend.
+En el servidor de avisos, `PORT` es opcional y vale `8787` por defecto. Si se añaden integraciones que requieran secretos, se documentarán en `.env.example` y se mantendrán exclusivamente en el backend.
 
 ## Primeras pantallas
 
@@ -88,6 +87,20 @@ No hay variables de entorno en Fase 1. Si se añaden integraciones que requieran
 
 El despliegue publica todos los archivos de `dist/` juntos. Sirve `sw.js` con `Cache-Control: no-cache` y conserva la caché de larga duración para los archivos con hash de `assets/`. Cada versión conserva su propia copia de la interfaz hasta que se activa la nueva. La primera visita necesita Internet y borrar los datos del sitio elimina la copia local y el plan. La fecha de la copia se refiere a la aplicación y sus guías.
 
+## Avisos oficiales de Granada
+
+La pantalla consulta el [canal Atom de AEMET para Granada](https://www.aemet.es/es/rss_info/avisos/and) y abre los mensajes CAP que publica. Muestra las zonas, el nivel comunicado, la hora de emisión, la vigencia y las instrucciones cuando aparecen en el mensaje. El ámbito se fija en la provincia de Granada y no se solicita la ubicación del usuario.
+
+Se consulta al abrir Avisos, al reconectar, al pulsar «Actualizar avisos» y cada cinco minutos mientras la pantalla esté abierta y conectada. Si falla la consulta, la copia guardada conserva su fecha y se identifica como información anterior. El historial del dispositivo conserva hasta 100 mensajes vistos durante los últimos 30 días. Muestra aparte los que ya han vencido o no figuran en la última consulta, con la fecha en que se vieron por última vez. El archivo completo sigue disponible en [AEMET OpenData](https://opendata.aemet.es/dist/), que requiere una clave para consultas por API.
+
+`npm run dev` y `npm run preview` incluyen el intermediario de avisos. En producción, sirve `dist/` por HTTPS, ejecuta `npm run start:api` y dirige `/api/avisos/granada` y sus subrutas, además de `/api/sismos/ign`, al proceso Node en `127.0.0.1:8787`. Este proceso consulta el canal y los documentos CAP de Granada en AEMET y el canal RSS de sismos del IGN. La integración presupone un despliegue en la raíz del dominio con la API en el mismo origen. El alojamiento estático sin ese proceso permite usar las herramientas locales, pero no consultar estos canales en directo.
+
+## Sismos y otras fuentes públicas
+
+El apartado de sismos muestra hasta cinco registros del [canal RSS del IGN](https://www.ign.es/web/ign/portal/social-rss), de España y su entorno. Los registros son observaciones que el IGN puede revisar. Cada entrada enlaza a su ficha. La consulta se hace al desplegar el apartado, al actualizar o al recuperar la conexión mientras esté abierto. La última copia indica su fecha y se puede leer sin Internet.
+
+La pantalla también enlaza al [mapa público de la RAN](https://ran-vmap.proteccioncivil.es/) y al [conjunto de incidencias de la DGT](https://nap.dgt.es/es/dataset/incidencias-de-trafico-srti-en-formato-lod-datex-ii). Estos accesos abren los servicios oficiales. La aplicación no consulta sus datos ni emite avisos de ES-Alert.
+
 ## Seguridad y contenido
 
 Los contactos y el plan familiar permanecerán en el dispositivo salvo consentimiento explícito para cualquier transmisión futura. Los datos oficiales mostrarán fuente, hora de publicación/consulta y antigüedad. La aplicación no inventará avisos, refugios, rutas, niveles de riesgo ni recomendaciones. Ante peligro inmediato, se debe contactar con el 112 cuando sea posible.
@@ -98,7 +111,9 @@ La portada muestra el progreso del kit. En móvil, la barra inferior da acceso a
 
 El kit se puede editar y filtrar por estado. El tamaño del hogar y la reserva de agua se guardan junto a la lista en IndexedDB. Si se borran los datos del sitio, también se borra el plan. La calculadora energética admite Wh o mAh con voltaje. La biblioteca incluye ocho guías que se pueden buscar por tema y descargar en un archivo de texto.
 
-Para comprobar la navegación, la descarga, la persistencia y la apertura sin red:
+## Pruebas
+
+Para comprobar los flujos del navegador, la reapertura sin red y los estados de avisos:
 
 ```bash
 npx playwright install chromium

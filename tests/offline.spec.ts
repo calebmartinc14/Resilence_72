@@ -40,7 +40,8 @@ test('la copia local abre sin red y conserva el plan, el kit y los contactos al 
   await nav.getByRole('link', { name: 'Energía' }).click()
   await expect(offline.getByText('8.0 horas', { exact: true })).toBeVisible()
   await nav.getByRole('link', { name: 'Avisos' }).click()
-  await expect(offline.getByRole('heading', { name: 'Sin datos de alertas' })).toBeVisible()
+  await expect(offline.getByText('Sin datos de alertas guardados.')).toBeVisible()
+  await expect(offline.getByText('Sin conexión. El estado actual de los avisos no se puede comprobar.')).toBeVisible()
 
   await context.setOffline(false)
   await expect(offline.getByText('Con conexión', { exact: true })).toBeVisible()

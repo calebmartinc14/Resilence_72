@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, BatteryCharging, BookOpen, CircleAlert, ClipboardCheck, House, Shield, Wifi, WifiOff } from 'lucide-react'
 import LocalTools from '../features/LocalTools'
+import OfficialNotices from '../features/OfficialNotices'
 import { useHousehold } from '../hooks/useHousehold'
 import { useOffline } from '../hooks/useOffline'
+
 
 const pages = {
   inicio: { label: 'Inicio', title: 'Prepárate a tu ritmo', icon: House },
@@ -98,7 +100,7 @@ export default function App() {
                 : 'Acceso sin conexión no preparado'}
             </summary>
             {offline.state === 'ready'
-              ? <p>Kit, plan familiar, contactos, guías y calculadoras disponibles. Copia de la aplicación guardada el <time dateTime={offline.since}>{new Date(offline.since).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</time>.</p>
+              ? <p>Kit, plan familiar, contactos, guías, calculadoras disponibles. Copia de la aplicación guardada el <time dateTime={offline.since}>{new Date(offline.since).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</time>.</p>
               : <p>Abre la versión publicada con Internet y espera a que aparezca el mensaje de que está lista.</p>}
             <p>Para instalarla, busca «Instalar» en el menú del navegador. En Safari para iPhone, usa Compartir → Añadir a pantalla de inicio.</p>
           </details>
@@ -108,7 +110,7 @@ export default function App() {
             <div className="quick-grid">
               <a className="quick-link" href="#guias"><BookOpen aria-hidden="true" /><span><strong>Guías de emergencia</strong><small>Consulta qué hacer</small></span><ArrowRight size={18} aria-hidden="true" /></a>
               <a className="quick-link" href="#autonomia"><BatteryCharging aria-hidden="true" /><span><strong>Calculadora de energía</strong><small>Estima cuánto dura tu batería</small></span><ArrowRight size={18} aria-hidden="true" /></a>
-              <a className="quick-link" href="#alertas"><CircleAlert aria-hidden="true" /><span><strong>Avisos oficiales</strong><small>Sin datos de alertas en la aplicación</small></span><ArrowRight size={18} aria-hidden="true" /></a>
+              <a className="quick-link" href="#alertas"><CircleAlert aria-hidden="true" /><span><strong>Avisos oficiales</strong><small>AEMET · Provincia de Granada</small></span><ArrowRight size={18} aria-hidden="true" /></a>
             </div>
           </section>
         </>}
@@ -117,10 +119,7 @@ export default function App() {
 
         {updateWaiting && <p className="update-notice" role="status">Hay una actualización preparada. Cierra todas las ventanas de Resilience 72 y vuelve a abrirla para aplicarla.</p>}
 
-        {page === 'alertas' && <section className="tool-section">
-          <h2>Sin datos de alertas</h2>
-          <p>{!online && 'Estás sin conexión. '}Todavía no hay fuentes conectadas a la aplicación. Última consulta: sin consultar.</p>
-        </section>}
+        {page === 'alertas' && <OfficialNotices online={online} />}
 
         {(page === 'inicio' || page === 'guias' || page === 'alertas') && (
           <aside className="emergency" aria-label="Teléfono de emergencias">
