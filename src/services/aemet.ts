@@ -1,8 +1,11 @@
 const atom = 'http://www.w3.org/2005/Atom'
 const cap = 'urn:oasis:names:tc:emergency:cap:1.2'
 const api = '/api/avisos/granada'
+const nationalApi = '/api/avisos/espana'
 const capPath = /^\/documentos_d\/eltiempo\/prediccion\/avisos\/cap\/(Z_CAP_C_LEMM_\d{14}_AFA[ZP]6118[A-Z0-9]*\.xml)$/
+const nationalCapPath = /^\/documentos_d\/eltiempo\/prediccion\/avisos\/cap\/(Z_CAP_C_LEMM_\d{14}_AFA[ZP]\d{4}[A-Z0-9]*\.xml)$/
 export const officialPage = 'https://www.aemet.es/es/eltiempo/prediccion/avisos?p=6118'
+export const nationalOfficialPage = 'https://www.aemet.es/es/eltiempo/prediccion/avisos'
 export type Coordinate = [lat: number, lng: number]
 
 export type Notice = {
@@ -51,9 +54,9 @@ async function fetchXml(path: string, namespace: string, root: string, signal: A
   return element
 }
 
-function getCapFile(url: URL) {
+function getCapFile(url: URL, national = false) {
   if (url.origin !== 'https://www.aemet.es' || url.username || url.password || url.search || url.hash) return undefined
-  return capPath.exec(url.pathname)?.[1]
+  return (national ? nationalCapPath : capPath).exec(url.pathname)?.[1]
 }
 
 // El CAP da pares latitud,longitud. Una geometría inválida se omite y el aviso sigue en la lista.
@@ -69,8 +72,10 @@ function parsePolygon(text: string): Coordinate[] {
 }
 
 // Leemos el mensaje CAP oficial y conservamos únicamente los avisos públicos reales.
-async function fetchNotice(url: URL, signal: AbortSignal) {
-  const alert = await fetchXml(api + '/' + getCapFile(url), cap, 'alert', signal)
+async function fetchNotice(url: URL, signal: AbortSignal, national = false) {
+  const file = getCapFile(url, national)
+  if (!file) throw new Error('Enlace de AEMET no reconocido')
+  const alert = await fetchXml((national ? nationalApi : api) + '/' + file, cap, 'alert', signal)
   const status = value(alert, 'status')
   const scope = value(alert, 'scope')
   if (!status || !scope) throw new Error('Aviso sin estado o ámbito')
@@ -140,4 +145,31 @@ export async function fetchBulletin(signal: AbortSignal): Promise<Bulletin> {
   }
   for (const id of replaced) notices.delete(id)
   return { consulted: new Date().toISOString(), published, notices: [...notices.values()] }
+}
+
+export type NationalEntry = { title: string; summary: string; url: string }
+export type NationalIndex = { consulted: string; published: string; entries: NationalEntry[] }
+
+// Un boletín nacional puede tener cientos de avisos. Solo pedimos el CAP al abrir uno.
+export async function fetchNationalIndex(signal: AbortSignal): Promise<NationalIndex> {
+  const feed = await fetchXml(nationalApi, atom, 'feed', signal)
+  if (!value(feed, 'title').endsWith(' - España')) throw new Error('Canal nacional no reconocido')
+  const entries = new Map<string, NationalEntry>()
+  let explicitlyEmpty = false
+  for (const entry of children(feed, 'entry')) {
+    const href = children(entry, 'link')[0]?.getAttribute('href') ?? ''
+    const url = new URL(href)
+    const title = value(entry, 'title')
+    const file = getCapFile(url, true)
+    if (file && title) entries.set(file, { title, summary: value(entry, 'summary'), url: url.href })
+    else if (url.origin === 'https://www.aemet.es' && url.pathname.startsWith('/documentos_d/eltiempo/prediccion/avisos/cap/') &&
+      url.pathname.endsWith('.tar.gz')) explicitlyEmpty ||= /\bNo hay avisos\b/i.test(title)
+    else throw new Error('Entrada nacional no reconocida')
+  }
+  if (entries.size === 0 && !explicitlyEmpty) throw new Error('Canal nacional incompleto')
+  return { entries: [...entries.values()], published: date(value(feed, 'updated')), consulted: new Date().toISOString() }
+}
+
+export async function fetchNationalNotice(url: string, signal: AbortSignal) {
+  return (await fetchNotice(new URL(url), signal, true))?.notice ?? null
 }

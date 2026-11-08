@@ -6,7 +6,7 @@ Resilience 72 es una aplicación web de preparación ciudadana para ayudar a par
 
 ## Estado
 
-Fase 5 — mapa municipal de Granada disponible sin conexión, con capas de AEMET e IGN. La aplicación es instalable y prepara una copia local de la interfaz. El kit, el plan, los contactos, las guías y las calculadoras están disponibles después de preparar la copia con Internet. La pantalla de Avisos consulta AEMET y ofrece acceso a los registros del IGN y a otras fuentes públicas.
+Mapa de España disponible sin conexión a escala provincial, con capas de AEMET e IGN y acceso rápido a instrucciones por situación. La aplicación es instalable y prepara una copia local de la interfaz. El kit, el plan, los contactos, las guías y las calculadoras están disponibles después de preparar la copia con Internet. La pantalla de Avisos consulta AEMET y ofrece acceso a los registros del IGN y a otras fuentes públicas.
 
 ## Arquitectura
 
@@ -15,7 +15,7 @@ Fase 5 — mapa municipal de Granada disponible sin conexión, con capas de AEME
 - **Persistencia local:** IndexedDB para el checklist, el plan familiar y los contactos. Evitar guardar información personal que no sea necesaria.
 - **Offline:** Service Worker y Cache API para la interfaz y las guías incluidas en la compilación. IndexedDB conserva los datos del hogar. Las consultas a la API de avisos quedan fuera de la caché del Service Worker. La última consulta válida se conserva por separado en el navegador.
 - **Servicios oficiales:** adaptadores por fuente en `src/services/`. AEMET y otras fuentes se integrarán solo después de verificar su documentación y condiciones. Si una credencial debe mantenerse secreta, se añadirá un backend Node/Express como proxy; ninguna clave privada irá en el cliente.
-- **Mapas:** Leaflet con límites municipales locales del IGN. Las capas de avisos y sismos usan la geometría publicada por sus respectivas fuentes.
+- **Mapas:** Leaflet con límites provinciales de España y detalle municipal de Granada. Las capas de avisos y sismos usan geometrías oficiales. El Callejero Gris del IGN se carga en línea al abrir el mapa. La vista vectorial guardada sirve como alternativa.
 - **Pruebas:** Vitest para lógica y componentes; Playwright para recorridos y navegador sin conexión, incorporados en las fases donde existan funcionalidades que probar.
 
 El intermediario de fuentes oficiales usa las APIs de Node. Los canales públicos integrados no necesitan credenciales.
@@ -82,8 +82,8 @@ En el servidor de avisos, `PORT` es opcional y vale `8787` por defecto. Si se a�
 ## Instalación y funcionamiento sin conexión
 
 1. Sirve el contenido de `dist/` por HTTPS o usa `npm run preview` en localhost. El servidor de desarrollo no registra el Service Worker.
-2. Abre la portada con Internet y espera a que diga «Lista para usar sin conexión». El panel muestra cuándo se guardó la copia.
-3. Usa la opción de instalación del navegador si está disponible. Corta la red y vuelve a abrir la aplicación o recarga la página. Comprueba el kit, el plan familiar, los contactos, las guías, las calculadoras y el mapa municipal.
+2. Abre la portada con Internet y espera a que diga «Copia preparada». El panel muestra cuándo se guardó la copia.
+3. Usa la opción de instalación del navegador si está disponible. Corta la red y vuelve a abrir la aplicación o recarga la página. Comprueba el kit, el plan familiar, los contactos, las guías, las calculadoras, «Qué hago ahora» y el mapa de España.
 4. Al reconectar, se comprueba si existe una versión nueva. Cuando esté preparada, cierra todas las ventanas de la aplicación y ábrela otra vez para activarla. El kit y el plan permanecen en IndexedDB.
 
 El despliegue publica todos los archivos de `dist/` juntos. Sirve `sw.js` con `Cache-Control: no-cache` y conserva la caché de larga duración para los archivos con hash de `assets/`. Cada versión conserva su propia copia de la interfaz hasta que se activa la nueva. La primera visita necesita Internet y borrar los datos del sitio elimina la copia local y el plan. La fecha de la copia se refiere a la aplicación y sus guías.
@@ -94,7 +94,7 @@ La pantalla consulta el [canal Atom de AEMET para Granada](https://www.aemet.es/
 
 Se consulta al abrir Avisos, al reconectar, al pulsar «Actualizar avisos» y cada cinco minutos mientras la pantalla esté abierta y conectada. Si falla la consulta, la copia guardada conserva su fecha y se identifica como información anterior. El historial del dispositivo conserva hasta 100 mensajes vistos durante los últimos 30 días. Muestra aparte los que ya han vencido o no figuran en la última consulta, con la fecha en que se vieron por última vez. El archivo completo sigue disponible en [AEMET OpenData](https://opendata.aemet.es/dist/), que requiere una clave para consultas por API.
 
-`npm run dev` y `npm run preview` incluyen el intermediario de avisos. En producción, sirve `dist/` por HTTPS, ejecuta `npm run start:api` y dirige `/api/avisos/granada` y sus subrutas, además de `/api/sismos/ign`, al proceso Node en `127.0.0.1:8787`. Este proceso consulta el canal y los documentos CAP de Granada en AEMET y el canal RSS de sismos del IGN. La integración presupone un despliegue en la raíz del dominio con la API en el mismo origen. El alojamiento estático sin ese proceso permite usar las herramientas locales, pero no consultar estos canales en directo.
+`npm run dev` y `npm run preview` incluyen el intermediario de avisos. En producción, sirve `dist/` por HTTPS, ejecuta `npm run start:api` y dirige `/api/avisos/granada` y `/api/avisos/espana` con sus subrutas, además de `/api/sismos/ign` y `/api/internacional/onu`, al proceso Node en `127.0.0.1:8787`. Este proceso consulta los canales y documentos CAP de Granada y España en AEMET, el canal RSS de sismos del IGN y el canal de Paz y Seguridad de Noticias ONU. La integración presupone un despliegue en la raíz del dominio con la API en el mismo origen. El alojamiento estático sin ese proceso permite usar las herramientas locales, pero no consultar estos canales en directo.
 
 ## Sismos y otras fuentes públicas
 
@@ -102,18 +102,28 @@ El apartado de sismos muestra hasta cinco registros del [canal RSS del IGN](http
 
 La pantalla también enlaza al [mapa público de la RAN](https://ran-vmap.proteccioncivil.es/) y al [conjunto de incidencias de la DGT](https://nap.dgt.es/es/dataset/incidencias-de-trafico-srti-en-formato-lod-datex-ii). Estos accesos abren los servicios oficiales. La aplicación no consulta sus datos ni emite avisos de ES-Alert.
 
-## Mapa de Granada
+## Mapa de España
 
-La cartografía base contiene los 174 municipios de la provincia. Está simplificada para orientación y ocupa aproximadamente 440 kB. El Service Worker guarda `public/granada.geojson` y el módulo de Leaflet junto a la aplicación. La portada indica cuándo está lista la copia. La pantalla del mapa indica la fecha de la cartografía y de las consultas dinámicas por separado.
+La pestaña Mapa permite cambiar entre España, Península, Canarias, Baleares y Ceuta y Melilla. El selector centra una provincia o ciudad autónoma. En Granada se conserva la capa opcional con sus 174 municipios.
 
-- **Base municipal:** obra derivada de BDLJE Continua CC BY 4.0 ign.es, según el [reconocimiento oficial](https://www.scne.es/tablaProductos.php) y la [licencia del IGN](https://www.ign.es/resources/licencia/Condiciones_licenciaUso_IGN.pdf). Se simplifican los límites y se conserva el nombre de cada municipio.
-- **AEMET:** se representan los polígonos de los mensajes [CAP oficiales](https://www.aemet.es/documentos/es/eltiempo/prediccion/avisos/plan_meteoalerta/METEOALERTA_ANX3_CAP.pdf). Los avisos sin geometría se leen en la lista. Cuando una consulta no es reciente o falla, los polígonos guardados se muestran con trazo discontinuo.
-- **IGN:** se representan las coordenadas GeoRSS de los registros que caen dentro del encuadre regional. Los puntos son observaciones sísmicas. Cada uno enlaza a su ficha.
-- **Ubicación:** «Mi ubicación» pide permiso al navegador y muestra el punto en memoria durante la sesión del mapa.
+- **Base sin conexión:** 53 recintos simplificados del IGN en un GeoJSON de unos 174 kB. Las etiquetas provinciales se calculan en la preparación de la capa y aparecen al acercar el mapa. Incluye las provincias, las dos ciudades autónomas y el recinto que el IGN publica para territorios sin provincia. El Service Worker guarda la base, el módulo de Leaflet y la capa de Granada. El mapa indica la fecha de la copia. Obra derivada de BDLJE Continua CC BY 4.0 ign.es, según el [reconocimiento oficial](https://www.scne.es/tablaProductos.php) y la [licencia del IGN](https://www.ign.es/resources/licencia/Condiciones_licenciaUso_IGN.pdf).
+- **Avisos:** el [índice nacional de AEMET](https://www.aemet.es/es/rss_info/avisos/esp) se consulta en una petición. La lista se puede buscar por zona o fenómeno. Solo se pide el mensaje CAP y se dibuja su polígono al abrir un aviso. Se conservan el último índice válido y hasta 20 detalles consultados, con indicación de copia cuando corresponda.
+- **Sismos:** hasta 50 epicentros recientes del IGN en el encuadre de España y su entorno. Los puntos enlazan con el listado y las fichas oficiales.
+- **Callejero:** capa en línea de [IGN Base Gris](https://www.ign.es/web/es/ign/portal/ide-area-nodo-ide-ign), sin clave y activa por defecto cuando hay conexión. Carga las teselas del encuadre al terminar de mover o ampliar el mapa. Si falla, se mantienen los límites y las etiquetas guardados. Se puede desactivar en Capas y se desactiva al solicitar la ubicación. La posición queda en memoria y la PWA guarda la cartografía vectorial local.
 
-El alcance cartográfico es municipal. La versión sin red incluye los límites y las últimas capas dinámicas que se hayan consultado con éxito.
+Para regenerar la base, descarga el [GeoJSON nacional del IGN](https://api-features.ign.es/collections/administrativeunit/items?f=json&nationallevelname=Provincia&limit=70) y ejecuta `python scripts/prepare-granada.py ruta-al-geojson --spain` con Shapely. Sin `--spain`, el script genera la capa de Granada a partir de la [consulta municipal](https://api-features.ign.es/collections/administrativeunit/items?f=json&codnut3=ES614&nationallevelname=Municipio&limit=250). La capa nacional se generaliza para orientación y elimina partes muy pequeñas de algunos multipolígonos, conservando la pieza principal de cada recinto.
 
-Para regenerar los límites, descarga el [GeoJSON de la consulta oficial para Granada](https://api-features.ign.es/collections/administrativeunit/items?f=json&codnut3=ES614&nationallevelname=Municipio&limit=250) y ejecuta `python scripts/prepare-granada.py ruta-al-geojson` en un entorno con Shapely. El script valida el ámbito y la completitud, simplifica las geometrías y conserva la fecha de la respuesta. Shapely solo se usa para preparar el archivo.
+## Qué hago ahora
+
+Desde Inicio, permite elegir una de las diez situaciones de la biblioteca y leer su guía breve sin conexión. Mantiene el acceso al 112, muestra la fuente y enlaza a Energía desde la guía de corte eléctrico.
+
+## Preparación civil e información internacional
+
+Las guías de emergencia nacional y conflicto armado están en «Qué hago ahora» y se incluyen en la biblioteca descargable. Las 72 horas se basan en las [orientaciones europeas](https://civil-protection-knowledge-network.europa.eu/preparedness-0/guidelines-population-preparedness). La semana es una referencia de la [agencia sueca MCF](https://www.mcf.se/en/advice-for-individuals/home-preparedness--prepping-for-at-least-a-week/basics-of-home-emergency-preparedness/). En España, sigue [ES-Alert](https://www.proteccioncivil.es/coordinacion/redes/ran/public-warning-system) y las instrucciones para tu zona. El kit admite 3, 7 o 14 días y conserva la elección en IndexedDB. Los hogares existentes mantienen tres días por defecto.
+
+En «Herramientas → Información internacional» se muestran titulares en español de [Paz y Seguridad de Noticias ONU](https://news.un.org/feed/subscribe/es/news/topic/peace-and-security/feed/rss.xml). Se guarda la última consulta válida para leer sus titulares sin red. Cada uno incluye la fecha de publicación y un enlace a la noticia oficial.
+
+Los avisos de novedades son optativos. Se consulta el canal cada cinco minutos mientras la aplicación está visible y conectada. La primera consulta tras activarlos establece una referencia. Solo se anuncia una publicación que aparece después y cuya fecha de publicación está dentro de las últimas 24 horas. Si el navegador tiene permiso y hay un Service Worker activo, también se puede mostrar la notificación del dispositivo. Esta versión no recibe avisos con la aplicación cerrada. La fuente publica noticias, no determina si ha comenzado una guerra.
 
 ## Seguridad y contenido
 
@@ -121,13 +131,13 @@ Los contactos y el plan familiar permanecerán en el dispositivo salvo consentim
 
 ## Funcionalidades locales
 
-La portada muestra el progreso del kit. En móvil, la barra inferior da acceso a Inicio, Mi kit, Guías, Energía y Avisos. Cada pantalla tiene un enlace directo y admite los botones de navegación del navegador.
+La portada Guía de bolsillo muestra el progreso del kit y da acceso directo a las guías, la calculadora y los avisos. La barra inferior reúne Inicio, Mi kit, Guías, Mapa y Herramientas. Herramientas también enlaza al mapa. Cada pantalla tiene un enlace directo y admite los botones de navegación del navegador.
 
-El kit se puede editar y filtrar por estado. El tamaño del hogar y la reserva de agua se guardan junto a la lista en IndexedDB. Si se borran los datos del sitio, también se borra el plan. La calculadora energética admite Wh o mAh con voltaje. La biblioteca incluye ocho guías que se pueden buscar por tema y descargar en un archivo de texto.
+El kit se puede editar y filtrar por estado. El tamaño del hogar y la reserva de agua se guardan junto a la lista en IndexedDB. Si se borran los datos del sitio, también se borra el plan. La calculadora energética admite Wh o mAh con voltaje. Incluye ejemplos ficticios editables de batería externa, luz LED y router, y un modo para introducir datos propios. Los borradores se mantienen separados durante la sesión. El resultado compara la energía aprovechable con el consumo previsto. La biblioteca incluye diez guías que se pueden buscar por tema y descargar en un archivo de texto.
 
 ## Pruebas
 
-La suite de Playwright abre la compilación de producción en Chromium. Usa respuestas de prueba para verificar estados concretos de AEMET e IGN. También cubre la persistencia, los cálculos, la caché y su actualización, las rutas de la API, la navegación con teclado y las reglas de accesibilidad de axe en las seis pantallas.
+La suite de Playwright abre la compilación de producción en Chromium. Usa respuestas de prueba para verificar estados concretos de AEMET e IGN. También cubre la persistencia, los cálculos, la caché y su actualización, las rutas de la API, la navegación con teclado y las reglas de accesibilidad de axe en las nueve pantallas.
 
 Para ejecutarla:
 

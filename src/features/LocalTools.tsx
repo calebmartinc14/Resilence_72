@@ -5,12 +5,20 @@ import type { Item } from '../storage/household'
 import { guides, downloadGuides } from './guides'
 import FamilyPlan from './FamilyPlan'
 import EnergyCalculator from './EnergyCalculator'
+import GuideBody from './GuideBody'
 
 const filters = [
   { value: 'todos', label: 'Todo' },
   { value: 'por-completar', label: 'Por completar' },
   { value: 'disponible', label: 'Disponible' },
 ] as const
+const extendedKit = [
+  { id: 'reserva-contactos', name: 'Contactos y plan familiar en papel' },
+  { id: 'reserva-efectivo', name: 'Dinero en efectivo' },
+  { id: 'reserva-abrigo', name: 'Ropa de abrigo y mantas' },
+  { id: 'reserva-necesidades', name: 'Suministros para necesidades específicas del hogar' },
+  { id: 'reserva-abrelatas', name: 'Abrelatas manual' },
+]
 
 // Quitamos tildes y diferencias de mayúsculas para que «frio» encuentre «Ola de frío».
 function searchable(text: string) {
@@ -28,6 +36,9 @@ export default function LocalTools({ page, household }: { page: string; househol
   )
   const search = searchable(query.trim())
   const visibleGuides = guides.filter(guide => searchable(guide.title).includes(search))
+  const days = data.days ?? 3
+  const missing = extendedKit.filter(suggestion => !data.items.some(item =>
+    item.id === suggestion.id || searchable(item.name.trim()) === searchable(suggestion.name)))
 
   // Ocultar las secciones permite conservar filtros, cálculos y borradores al navegar.
   return <>
@@ -38,16 +49,21 @@ export default function LocalTools({ page, household }: { page: string; househol
       {ready && <>
         <details className="household">
           <summary>Configurar hogar y reserva de agua</summary>
-          <p>Reserva estimada para 72 horas: <strong>{(data.people * data.litres * 3).toLocaleString('es-ES', { maximumFractionDigits: 1 })} litros</strong>.</p>
+          <p>Reserva estimada para {days === 3 ? '72 horas' : days + ' días'}: <strong>{(data.people * data.litres * days).toLocaleString('es-ES', { maximumFractionDigits: 1 })} litros</strong>.</p>
           <form onSubmit={event => {
             event.preventDefault()
             // FormData recoge el formulario y el resto del hogar se conserva con la copia del objeto.
             const fields = new FormData(event.currentTarget)
-            update({ ...data, people: Number(fields.get('people')), litres: Number(fields.get('litres')) })
+            const target = Number(fields.get('days'))
+            if (![3, 7, 14].includes(target)) return
+            update({ ...data, people: Number(fields.get('people')), litres: Number(fields.get('litres')), days: target })
           }}>
             <div className="tool-fields">
               <label>Personas en el hogar<input name="people" type="number" min="1" max="100" required defaultValue={data.people} /></label>
               <label>Litros por persona y día<input name="litres" type="number" min="0.1" max="100" step="0.1" required defaultValue={data.litres} /></label>
+              <label>Periodo de preparación<select name="days" defaultValue={days}>
+                <option value="3">72 horas (3 días)</option><option value="7">7 días</option><option value="14">14 días</option>
+              </select></label>
             </div>
             <p>Ajusta la cantidad según el clima, la salud y las necesidades de tu hogar.</p>
             <button type="submit">Guardar hogar</button>
@@ -55,6 +71,15 @@ export default function LocalTools({ page, household }: { page: string; househol
         </details>
 
         <FamilyPlan data={data} update={update} />
+        <details className="extended-kit">
+          <summary>Sugerencias para ampliar el kit</summary>
+          <p>Ajusta las cantidades de agua, alimentos y suministros al periodo que hayas elegido.</p>
+          <ul>{extendedKit.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+          <button type="button" disabled={missing.length === 0} onClick={() => {
+            update({ ...data, items: [...data.items, ...missing.map(item => ({ ...item, status: 'necesario' as const }))] })
+            setFilter('todos')
+          }}>Añadir sugerencias que faltan</button>
+        </details>
 
         <div className="filters" role="group" aria-label="Filtrar lista">
           {filters.map(option => <button key={option.value} type="button" aria-pressed={filter === option.value}
@@ -98,8 +123,7 @@ export default function LocalTools({ page, household }: { page: string; househol
       <p role="status">{visibleGuides.length === 0 ? 'No se encontraron guías.' : visibleGuides.length + (visibleGuides.length === 1 ? ' guía' : ' guías')}</p>
       {visibleGuides.map(guide => <details key={guide.title}>
         <summary>{guide.title}</summary>
-        <p>{guide.text}</p>
-        <p>Fuente: <a href={guide.url}>{guide.source}</a>. Revisada el 8 de noviembre de 2026.</p>
+        <GuideBody guide={guide} />
       </details>)}
       <button className="download-button" type="button" onClick={downloadGuides}><Download size={18} aria-hidden="true" /> Descargar todas las guías</button>
       <p>Guarda una copia en texto para consultarla sin conexión.</p>

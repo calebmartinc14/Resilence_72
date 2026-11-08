@@ -4,6 +4,8 @@ import SeismicReports from './SeismicReports'
 export default function OfficialNotices({ online }: { online: boolean }) {
   return <>
     <WeatherNotices online={online} />
+    <p className="national-map-link"><a className="button" href="#mapa">Consultar avisos de toda España en el mapa</a></p>
+    <p className="national-map-link"><a className="button" href="#internacional">Información internacional de Noticias ONU</a></p>
     <SeismicReports online={online} />
     <details className="tool-section official-panel">
       <summary>Otras fuentes oficiales</summary>

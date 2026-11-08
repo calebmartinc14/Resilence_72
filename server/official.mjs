@@ -2,9 +2,14 @@ const origin = 'https://www.aemet.es'
 const feed = '/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6118_ATOM.xml'
 const capFolder = '/documentos_d/eltiempo/prediccion/avisos/cap/'
 const prefix = '/api/avisos/granada'
+const national = '/api/avisos/espana'
+const nationalFeed = '/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAE_wah_ATOM.xml'
 const ignPath = '/api/sismos/ign'
 const ignFeed = 'https://www.ign.es/ign/RssTools/sismologia.xml'
+const newsPath = '/api/internacional/onu'
+const newsFeed = 'https://news.un.org/feed/subscribe/es/news/topic/peace-and-security/feed/rss.xml'
 const capName = /^Z_CAP_C_LEMM_\d{14}_AFA[ZP]6118[A-Z0-9]*\.xml$/
+const nationalCapName = /^Z_CAP_C_LEMM_\d{14}_AFA[ZP]\d{4}[A-Z0-9]*\.xml$/
 const maxBytes = 512 * 1024
 
 // Limitamos el tiempo, el tamaño y los redireccionamientos de la respuesta externa.
@@ -35,7 +40,9 @@ export async function proxyOfficial(req, res, next) {
     return
   }
   const isIgn = url.pathname === ignPath
-  if (!isIgn && url.pathname !== prefix && !url.pathname.startsWith(prefix + '/')) return next()
+  const isNews = url.pathname === newsPath
+  const isNational = url.pathname === national || url.pathname.startsWith(national + '/')
+  if (!isIgn && !isNews && !isNational && url.pathname !== prefix && !url.pathname.startsWith(prefix + '/')) return next()
 
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -44,16 +51,19 @@ export async function proxyOfficial(req, res, next) {
     res.writeHead(405).end()
     return
   }
-  // No aceptamos URLs de la persona usuaria: solo rutas con el formato del catálogo de Granada.
-  const filename = url.pathname.slice(prefix.length + 1)
-  const path = url.pathname === prefix ? feed : capName.test(filename) ? capFolder + filename : null
-  if ((!isIgn && !path) || url.search) {
+  // El servidor solo construye URLs en el origen fijo de AEMET y con nombres CAP autorizados.
+  const scope = isNational ? national : prefix
+  const filename = url.pathname.slice(scope.length + 1)
+  const pattern = isNational ? nationalCapName : capName
+  const path = url.pathname === scope ? (isNational ? nationalFeed : feed)
+    : pattern.test(filename) ? capFolder + filename : null
+  if ((!isIgn && !isNews && !path) || url.search) {
     res.writeHead(404).end()
     return
   }
 
   try {
-    const xml = await readXml(isIgn ? ignFeed : origin + path)
+    const xml = await readXml(isNews ? newsFeed : isIgn ? ignFeed : origin + path)
     res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' }).end(xml)
   } catch {
     res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' }).end('No se pudo consultar la fuente oficial.')

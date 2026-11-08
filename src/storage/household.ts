@@ -1,6 +1,6 @@
 export type Item = { id: string; name: string; status: 'necesario' | 'pendiente' | 'disponible' }
 export type Contact = { id: string; name: string; phone: string }
-export type Household = { people: number; litres: number; items: Item[]; plan?: string; contacts?: Contact[] }
+export type Household = { people: number; litres: number; days?: number; items: Item[]; plan?: string; contacts?: Contact[] }
 
 const initialNames = ['Agua potable', 'Alimentos no perecederos', 'Medicamentos y botiquín', 'Artículos de higiene',
   'Linterna y pilas', 'Radio', 'Batería externa', 'Documentación esencial']

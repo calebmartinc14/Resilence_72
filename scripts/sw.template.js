@@ -52,3 +52,17 @@ self.addEventListener('message', event => {
     event.ports[0].postMessage(entries.every(Boolean) && stamp ? await stamp.text() : null)
   })())
 })
+
+// Las notificaciones informativas abren una ruta fija de la aplicación.
+self.addEventListener('notificationclick', event => {
+  if (event.notification.tag !== 'resilience72-internacional') return
+  event.notification.close()
+  event.waitUntil((async () => {
+    const destination = new URL('#internacional', scope)
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const appWindow = windows.find(client => client.url.startsWith(scope))
+    const navigated = appWindow && await appWindow.navigate(destination.href)
+    if (navigated) await navigated.focus()
+    else await self.clients.openWindow(destination.href)
+  })())
+})

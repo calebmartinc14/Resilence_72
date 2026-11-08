@@ -31,13 +31,13 @@ test('recupera una instalación interrumpida y aplica una versión nueva tras ce
   try {
     const url = 'http://127.0.0.1:43174/'
     await page.goto(url)
-    await expect(page.getByText('Acceso sin conexión no preparado', { exact: true })).toBeVisible()
+    await expect(page.getByText('Copia sin conexión no preparada', { exact: true })).toBeVisible()
 
     version = 'original'
     await context.setOffline(true)
     await expect(page.getByText('Sin conexión', { exact: true })).toBeVisible()
     await context.setOffline(false)
-    await expect(page.getByText('Lista para usar sin conexión', { exact: true })).toBeVisible()
+    await expect(page.getByText('Copia preparada', { exact: true })).toBeVisible()
 
     version = 'update'
     await page.evaluate(async () => { await (await navigator.serviceWorker.ready).update() })
@@ -46,7 +46,7 @@ test('recupera una instalación interrumpida y aplica una versión nueva tras ce
 
     const reopened = await context.newPage()
     await reopened.goto(url)
-    await expect(reopened.getByText('Lista para usar sin conexión', { exact: true })).toBeVisible()
+    await expect(reopened.getByText('Copia preparada', { exact: true })).toBeVisible()
     await expect.poll(() => reopened.evaluate(() => caches.keys())).toEqual([
       'resilience72:' + url + ':prueba-actualizacion',
     ])
